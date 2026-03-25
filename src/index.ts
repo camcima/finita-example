@@ -1,4 +1,4 @@
-import type { ProcessInterface } from 'finita';
+import type { ProcessInterface } from '@camcima/finita';
 import { Order } from './order/Order.js';
 import { createPrepaymentProcess } from './order/process/Prepayment.js';
 import { createPostpaymentProcess } from './order/process/Postpayment.js';

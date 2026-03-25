@@ -1,4 +1,4 @@
-import type { ConditionInterface } from 'finita';
+import type { ConditionInterface } from '@camcima/finita';
 
 export class AuthorizedSuccessful implements ConditionInterface {
   checkCondition(_subject: unknown, context: Map<string, unknown>): boolean {

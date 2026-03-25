@@ -1,4 +1,4 @@
-import { GraphBuilder, type ProcessInterface } from 'finita';
+import { GraphBuilder, type ProcessInterface } from '@camcima/finita';
 import { createPrepaymentProcess } from './order/process/Prepayment.js';
 import { createPostpaymentProcess } from './order/process/Postpayment.js';
 

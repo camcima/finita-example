@@ -2,7 +2,7 @@ import {
   Statemachine,
   type ProcessInterface,
   type StatemachineInterface,
-} from 'finita';
+} from '@camcima/finita';
 
 export class Order {
   private readonly number: string;

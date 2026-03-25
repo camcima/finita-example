@@ -1,4 +1,4 @@
-import type { ConditionInterface } from 'finita';
+import type { ConditionInterface } from '@camcima/finita';
 import { Order } from '../Order.js';
 
 export class ShippingDateGreater14Days implements ConditionInterface {

@@ -1,4 +1,4 @@
-import { CallbackObserver } from 'finita';
+import { CallbackObserver } from '@camcima/finita';
 import { Order } from '../Order.js';
 
 export function createAuthorizeCommand(): CallbackObserver {

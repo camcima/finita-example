@@ -10,7 +10,7 @@
     "graph": "tsx src/graph.ts"
   },
   "dependencies": {
-    "finita": "file:../finita"
+    "@camcima/finita": "^1.0.0"
   },
   "devDependencies": {
     "typescript": "^5.7.0",

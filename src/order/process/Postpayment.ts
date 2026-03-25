@@ -3,7 +3,7 @@ import {
   State,
   Transition,
   CallbackObserver,
-} from 'finita';
+} from '@camcima/finita';
 import * as States from '../StateConstants.js';
 import * as Events from '../EventConstants.js';
 import * as Processes from '../ProcessConstants.js';
