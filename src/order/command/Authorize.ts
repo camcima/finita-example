@@ -3,6 +3,8 @@ import { Order } from '../Order.js';
 
 export function createAuthorizeCommand(): CallbackObserver {
   return new CallbackObserver((subject: unknown, context: unknown) => {
+    // Observer callbacks receive ObservableSubject (not TSubject directly),
+    // so a cast is still needed here
     const order = subject as Order;
     const ctx = context as Map<string, unknown>;
     if (order.getNumber() !== 'PREPAYMENT 2') {

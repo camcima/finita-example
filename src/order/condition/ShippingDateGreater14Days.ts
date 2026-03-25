@@ -1,11 +1,8 @@
 import type { ConditionInterface } from '@camcima/finita';
 import { Order } from '../Order.js';
 
-export class ShippingDateGreater14Days implements ConditionInterface {
-  checkCondition(subject: unknown, _context: Map<string, unknown>): boolean {
-    if (!(subject instanceof Order)) {
-      throw new Error('Subject has to be an Order!');
-    }
+export class ShippingDateGreater14Days implements ConditionInterface<Order> {
+  checkCondition(subject: Order, _context: Map<string, unknown>): boolean {
     return subject.getNumber() === 'POSTPAYMENT 2';
   }
 

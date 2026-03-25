@@ -22,8 +22,8 @@ export function createPostpaymentProcess(): Process {
   // Attach shipping command to the "shipping" event on "new" state
   const shippingEvent = stateNew.getEvent(Events.EVENT_SHIPPING);
   shippingEvent.attach(new CallbackObserver((subject: unknown) => {
-    const order = subject as Order;
-    console.log(`Command: ${order.toString()} is shipped!`);
+    // Observer callbacks receive ObservableSubject, so a cast is still needed
+    console.log(`Command: ${(subject as Order).toString()} is shipped!`);
   }));
 
   const shippingDateGreater14Days = new ShippingDateGreater14Days();

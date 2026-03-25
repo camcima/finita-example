@@ -6,11 +6,11 @@ import {
 
 export class Order {
   private readonly number: string;
-  private readonly statemachine: StatemachineInterface;
+  private readonly statemachine: StatemachineInterface<Order>;
 
   constructor(number: string, process: ProcessInterface) {
     this.number = number;
-    this.statemachine = new Statemachine(this, process);
+    this.statemachine = new Statemachine<Order>(this, process);
   }
 
   async triggerEvent(name: string, context?: Map<string, unknown>): Promise<void> {
