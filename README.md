@@ -1,17 +1,22 @@
 # finita-example
 
-A working example of the [@camcima/finita](https://github.com/camcima/finita) state machine library, demonstrating order processing with two workflows: **prepayment** and **postpayment**.
+A working example of the [@camcima/finita](https://github.com/camcima/finita) state machine library (**v4**), demonstrating order processing with two workflows: **prepayment** and **postpayment**.
 
 ## Overview
 
 This example models an e-commerce order lifecycle where orders follow different state machine workflows depending on the payment method. It demonstrates:
 
-- Defining states, transitions, and events
-- Conditions (guards) with typed `TSubject` generics
-- Composite conditions with `Not`
-- Event observers (commands) for side effects
-- Automatic transitions (no event trigger, condition-based)
-- Graph visualization output (DOT and Mermaid formats)
+- **`ProcessBuilder`** — fluent, validated construction of a frozen, immutable process graph
+- **Typed conditions (guards)** with `ConditionInterface<Order>` and the `Not` composite
+- **Named event commands** implemented as `Observer`s (so they show up in graph output)
+- **Automatic transitions** (no event trigger, condition-based)
+- **After-transition observers** (typed, no casts): `StatefulStatusChanger`, `TransitionLogger`, and a custom observer using `frame.subject`
+- **Graph visualization** output (DOT and Mermaid formats)
+
+A second script (`npm run features`) isolates the headline features added/changed in v4:
+**`ReentrancyError`**, **`maxAutomaticHops`** (`AutomaticTransitionCycleError`), the **`WeightTransition`** selector, the **`OnEnterObserver`** (chained events via `EnqueueContext`), and **composite conditions** (`AndComposite`/`Not`).
+
+> Upgrading your own project from v2/v3? See the library's [migration guide](https://github.com/camcima/finita/blob/main/docs/migration/v2-to-v3.md). The biggest change is that `State`/`Transition`/`Process` are no longer constructed directly — everything goes through `ProcessBuilder`.
 
 ## Workflows
 
@@ -55,10 +60,11 @@ stateDiagram-v2
 
 ```
 src/
-  index.ts                              # Main entry point - runs all orders through their workflows
+  index.ts                              # Order-processing demo (npm start)
+  features.ts                           # Isolated v4 feature demos (npm run features)
   graph.ts                              # Graph visualization output (DOT/Mermaid)
   order/
-    Order.ts                            # Order domain object with Statemachine<Order>
+    Order.ts                            # Order domain object: Statemachine<Order> + observers
     StateConstants.ts                   # State name constants
     EventConstants.ts                   # Event name constants
     ProcessConstants.ts                 # Process name constants
@@ -66,10 +72,13 @@ src/
       AuthorizedSuccessful.ts           # Checks if authorization succeeded (via context)
       ShippingDateGreater14Days.ts      # Simulates a time-based condition
     command/
-      Authorize.ts                      # Observer that runs authorization logic
+      Authorize.ts                      # Named Observer command for the "authorize" event
+      Shipping.ts                       # Named Observer command for the "shipping" event
+    observer/
+      OrderAuditObserver.ts             # Typed AfterTransitionObserver (uses frame.subject)
     process/
-      Prepayment.ts                     # Builds the prepayment process graph
-      Postpayment.ts                    # Builds the postpayment process graph
+      Prepayment.ts                     # Builds the prepayment process (ProcessBuilder)
+      Postpayment.ts                    # Builds the postpayment process (ProcessBuilder)
 ```
 
 ## Running
@@ -78,47 +87,72 @@ src/
 # Install dependencies
 npm install
 
-# Run the example
+# Run the order-processing demo
 npm start
+
+# Run the v4 feature spotlights
+npm run features
 
 # Generate graph output for a process
 npm run graph                  # defaults to prepayment
 npx tsx src/graph.ts postpayment
 ```
 
-### Sample Output
+### Sample Output (`npm start`)
 
 ```
-=============================================================
-all created orders have the status "new"
-=============================================================
-Order PREPAYMENT 1 has status new
-possible events: authorize
--------------------------------------------------------------
-Order POSTPAYMENT 1 has status new
-possible events: shipping
--------------------------------------------------------------
 =============================================================
 now we are authorizing all orders if possible
 =============================================================
 Order PREPAYMENT 1 has status new
-trigger event "authorize" on Order PREPAYMENT 1
-Command "Authorize" was executed. Result: successful
+  [command] "authorize" on Order PREPAYMENT 1 -> successful
+  [info] Transition from "new" to "payment pending" with event "authorize" condition "authorized successful"
+  [audit] Order PREPAYMENT 1: new -> payment pending (event "authorize")
 Order PREPAYMENT 1 has status payment pending
-trigger event "paid" on Order PREPAYMENT 1
+  [info] Transition from "payment pending" to "shippable" with event "paid"
+  [audit] Order PREPAYMENT 1: payment pending -> shippable (event "paid")
 Order PREPAYMENT 1 has status shippable
 -------------------------------------------------------------
 ```
 
+The `[command]` line is the named event observer; `[info]` is the `TransitionLogger`; `[audit]` is the custom `OrderAuditObserver`. The `has status …` line reads the denormalized status kept in sync by `StatefulStatusChanger`.
+
 ## Key Patterns Demonstrated
 
-### Typed Conditions (TSubject generics)
+### Building a process with `ProcessBuilder`
+
+In v4, states and transitions are declared through the fluent, validated builder, which returns a frozen `Process`. There is no `new State()` / `new Transition()`.
+
+```typescript
+import { ProcessBuilder, Not } from "@camcima/finita";
+
+const authorizeSuccessful = new AuthorizedSuccessful();
+const authorizeFailed = new Not(authorizeSuccessful);
+
+const process = new ProcessBuilder<Order>("prepayment")
+  .addState("new", { initial: true })
+  .addState("payment pending")
+  .addState("payment failed")
+  // Two transitions out of "new" on the same event, branching on the condition.
+  .addTransition("new", "payment pending", {
+    event: "authorize",
+    condition: authorizeSuccessful,
+  })
+  .addTransition("new", "payment failed", {
+    event: "authorize",
+    condition: authorizeFailed,
+  })
+  // Automatic (eventless) transition: fires as soon as the condition holds.
+  .addTransition("shipped", "closed", { condition: shippingDateGreater14Days })
+  .build();
+```
+
+### Typed conditions (TSubject generics)
 
 Conditions implement `ConditionInterface<Order>`, giving type-safe access to the subject without casts:
 
 ```typescript
 import type { ConditionInterface } from "@camcima/finita";
-import { Order } from "../Order.js";
 
 export class ShippingDateGreater14Days implements ConditionInterface<Order> {
   checkCondition(subject: Order, _context: Map<string, unknown>): boolean {
@@ -131,46 +165,70 @@ export class ShippingDateGreater14Days implements ConditionInterface<Order> {
 }
 ```
 
-### Typed Statemachine
+### Event commands as named observers
 
-The `Order` class uses `Statemachine<Order>` for type-safe subject access:
+Attach observers to a state's event after building. A named `Observer` (one with `getName()`) renders cleanly in graph output. The event arrives as `subject`; the invoke args are `[subject, context]`:
 
 ```typescript
-import { Statemachine, type StatemachineInterface } from "@camcima/finita";
+import type { Observer, ObservableSubject } from "@camcima/finita";
 
-export class Order {
-  private readonly statemachine: StatemachineInterface<Order>;
-
-  constructor(number: string, process: ProcessInterface) {
-    this.statemachine = new Statemachine<Order>(this, process);
+export class AuthorizeCommand implements Observer {
+  getName(): string {
+    return "authorize-order";
   }
+
+  update(_subject: ObservableSubject, args?: readonly unknown[]): void {
+    const order = args?.[0] as Order;
+    const context = args?.[1] as Map<string, unknown>;
+    context.set("authorize result", /* ... */ "successful");
+  }
+}
+
+process
+  .getState("new")
+  .getEvent("authorize")
+  .attach(new AuthorizeCommand());
+```
+
+> For a quick, inline command without a name, the library's `CallbackObserver` spreads the invoke args straight into a callback: `new CallbackObserver((order, context) => { ... })`.
+
+### After-transition observers (typed, no casts)
+
+`Order` wires up three after-observers. In v4 the `TransitionFrame` carries the typed `subject`, so custom observers need no casts:
+
+```typescript
+import {
+  Statemachine,
+  StatefulStatusChanger,
+  TransitionLogger,
+} from "@camcima/finita";
+
+this.statemachine = new Statemachine<Order>(this, process, {
+  maxAutomaticHops: 50, // bound runaway automatic loops (default 100)
+});
+
+this.statemachine.attachAfter(new StatefulStatusChanger<Order>()); // syncs status
+this.statemachine.attachAfter(new TransitionLogger<Order>(consoleLogger));
+this.statemachine.attachAfter(new OrderAuditObserver()); // uses frame.subject
+```
+
+```typescript
+// OrderAuditObserver — frame.subject is typed as Order, no cast needed
+notify(frame: TransitionFrame<Order>, _ctx: EnqueueContext): void {
+  const order = frame.subject;
+  console.log(`${order.getName()}: ${frame.fromState.getName()} -> ${frame.toState.getName()}`);
 }
 ```
 
-### Conditional Transitions with Composite Guards
+### v4 feature spotlights (`npm run features`)
 
-The prepayment workflow uses `Not` to create the inverse condition:
-
-```typescript
-const authorizeSuccessful = new AuthorizedSuccessful();
-const authorizeFailed = new Not(authorizeSuccessful);
-
-stateNew.addTransition(
-  new Transition(paymentFailed, "authorize", authorizeFailed),
-);
-stateNew.addTransition(
-  new Transition(paymentPending, "authorize", authorizeSuccessful),
-);
-```
-
-### Automatic Transitions
-
-Transitions without an event name fire automatically when their condition is true:
-
-```typescript
-// Fires automatically when shipping-date >= 14 days (no event needed)
-shipped.addTransition(new Transition(closed, null, shippingDateGreater14Days));
-```
+| Feature | What it shows |
+| --- | --- |
+| `AndComposite` / `Not` | Composing guards over a typed subject |
+| `ReentrancyError` | Re-entering the machine from an observer is rejected (instead of deadlocking) |
+| `maxAutomaticHops` | A runaway automatic loop is bounded with `AutomaticTransitionCycleError` |
+| `WeightTransition` | Ambiguous transitions resolved deterministically by weight |
+| `OnEnterObserver` | A chained event auto-fires on state entry via `EnqueueContext` |
 
 ## License
 

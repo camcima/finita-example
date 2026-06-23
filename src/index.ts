@@ -1,3 +1,20 @@
+/**
+ * Order-processing demo (finita v4).
+ *
+ * Showcases, across the run below:
+ *  - ProcessBuilder        — fluent, validated, frozen process construction
+ *  - Typed conditions      — ConditionInterface<Order> + Not() composite
+ *  - Named event commands  — Observer.update on the "authorize"/"shipping" events
+ *  - Automatic transitions — eventless, condition-driven (e.g. shipped -> closed)
+ *  - After-transition observers (typed, no casts):
+ *      StatefulStatusChanger keeps Order.getCurrentStateName() in sync,
+ *      TransitionLogger logs each commit ([info]),
+ *      OrderAuditObserver records an audit trail via frame.subject ([audit])
+ *  - WrongEventForStateError when an event is invalid for the current state
+ *
+ * For isolated demos of ReentrancyError, maxAutomaticHops, WeightTransition,
+ * OnEnterObserver, and composite conditions, run `npm run features`.
+ */
 import type { ProcessInterface } from '@camcima/finita';
 import { Order } from './order/Order.js';
 import { createPrepaymentProcess } from './order/process/Prepayment.js';
