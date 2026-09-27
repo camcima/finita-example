@@ -1,6 +1,6 @@
 # finita-example
 
-A working example of the [@camcima/finita](https://github.com/camcima/finita) state machine library (**v4**), demonstrating order processing with two workflows: **prepayment** and **postpayment**.
+A working example of the [@camcima/finita](https://github.com/camcima/finita) state machine library (**v4.3**), demonstrating order processing with two workflows: **prepayment** and **postpayment**.
 
 ## Overview
 
@@ -13,8 +13,8 @@ This example models an e-commerce order lifecycle where orders follow different 
 - **After-transition observers** (typed, no casts): `StatefulStatusChanger`, `TransitionLogger`, and a custom observer using `frame.subject`
 - **Graph visualization** output (DOT and Mermaid formats)
 
-A second script (`npm run features`) isolates the headline features added/changed in v4:
-**`ReentrancyError`**, **`maxAutomaticHops`** (`AutomaticTransitionCycleError`), the **`WeightTransition`** selector, the **`OnEnterObserver`** (chained events via `EnqueueContext`), and **composite conditions** (`AndComposite`/`Not`).
+A second script (`npm run features`) isolates the headline features of v4 through v4.3:
+**composite conditions** (`AndComposite`/`Not`), **`ReentrancyError`**, **`maxAutomaticHops`** (`AutomaticTransitionCycleError`), **ambiguous transitions** and the **`WeightTransition`** selector, the **`OnEnterObserver`** with **`whenIdle()`**, **chained-operation errors** and **back-pressure**, **lock release failures** (`LockOwnershipUncertainError`), and **`Factory` engine options** with the **load-inside-the-lock** pattern for persisted state.
 
 > Upgrading your own project from v2/v3? See the library's [migration guide](https://github.com/camcima/finita/blob/main/docs/migration/v2-to-v3.md). The biggest change is that `State`/`Transition`/`Process` are no longer constructed directly — everything goes through `ProcessBuilder`.
 
@@ -61,7 +61,7 @@ stateDiagram-v2
 ```
 src/
   index.ts                              # Order-processing demo (npm start)
-  features.ts                           # Isolated v4 feature demos (npm run features)
+  features.ts                           # Isolated v4.x feature demos (npm run features)
   graph.ts                              # Graph visualization output (DOT/Mermaid)
   order/
     Order.ts                            # Order domain object: Statemachine<Order> + observers
@@ -90,7 +90,7 @@ npm install
 # Run the order-processing demo
 npm start
 
-# Run the v4 feature spotlights
+# Run the v4.x feature spotlights
 npm run features
 
 # Generate graph output for a process
@@ -220,15 +220,20 @@ notify(frame: TransitionFrame<Order>, _ctx: EnqueueContext): void {
 }
 ```
 
-### v4 feature spotlights (`npm run features`)
+### v4.x feature spotlights (`npm run features`)
 
-| Feature | What it shows |
-| --- | --- |
-| `AndComposite` / `Not` | Composing guards over a typed subject |
-| `ReentrancyError` | Re-entering the machine from an observer is rejected (instead of deadlocking) |
-| `maxAutomaticHops` | A runaway automatic loop is bounded with `AutomaticTransitionCycleError` |
-| `WeightTransition` | Ambiguous transitions resolved deterministically by weight |
-| `OnEnterObserver` | A chained event auto-fires on state entry via `EnqueueContext` |
+| # | Feature | Since | What it shows |
+| --- | --- | --- | --- |
+| 1 | `AndComposite` / `Not` | 4.0 | Composing guards over a typed subject |
+| 2 | `ReentrancyError` | 4.0, 4.3 | Re-entering the machine from an observer is rejected instead of deadlocking. Since 4.3 this also covers conditions nested inside composites |
+| 3 | `maxAutomaticHops` | 4.0 | A runaway automatic loop is bounded with `AutomaticTransitionCycleError` |
+| 4 | `AmbiguousTransitionError` / `WeightTransition` | 4.2 | The error lists the competing transitions, and `WeightTransition` resolves them by weight |
+| 5 | `OnEnterObserver` / `whenIdle()` | 4.1 | A chained event auto-fires on state entry, and `whenIdle()` waits for it |
+| 6 | `onChainedOperationError` / `maxQueueLength` | 4.1, 4.3 | Chained failures reach a sink, even an async one that fails itself, and a full queue refuses new work |
+| 7 | `LockOwnershipUncertainError` | 4.3 | After a failed lock release, queued work is rejected until a manual release succeeds |
+| 8 | `Factory` options, persisted state | 4.2, 4.3 | Factory-wide engine options, why a lock alone does not stop a stale approval, and the load-inside-the-lock pattern |
+
+Section 8 follows the library's [Locks and persisted state](https://github.com/camcima/finita/blob/main/docs/mutex.md#locks-and-persisted-state) guidance. Build machines from state loaded after taking the lock, or two workers can both commit the same transition.
 
 ## License
 

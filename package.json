@@ -1,7 +1,7 @@
 {
   "name": "finita-example",
-  "version": "4.0.0",
-  "description": "Example statemachine - Order processing with prepayment and postpayment workflows (finita v4)",
+  "version": "4.3.0",
+  "description": "Example statemachine - Order processing with prepayment and postpayment workflows (finita v4.3)",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
@@ -11,10 +11,10 @@
     "graph": "tsx src/graph.ts"
   },
   "dependencies": {
-    "@camcima/finita": "^4.0.0"
+    "@camcima/finita": "^4.3.0"
   },
   "devDependencies": {
-    "typescript": "^5.7.0",
-    "tsx": "^4.0.0"
+    "tsx": "^4.0.0",
+    "typescript": "^5.7.0"
   }
 }

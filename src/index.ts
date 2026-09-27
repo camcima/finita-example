@@ -1,5 +1,5 @@
 /**
- * Order-processing demo (finita v4).
+ * Order-processing demo (finita v4.3).
  *
  * Showcases, across the run below:
  *  - ProcessBuilder        — fluent, validated, frozen process construction
@@ -12,8 +12,11 @@
  *      OrderAuditObserver records an audit trail via frame.subject ([audit])
  *  - WrongEventForStateError when an event is invalid for the current state
  *
- * For isolated demos of ReentrancyError, maxAutomaticHops, WeightTransition,
- * OnEnterObserver, and composite conditions, run `npm run features`.
+ * For isolated demos of composite conditions, ReentrancyError,
+ * maxAutomaticHops, ambiguous transitions and WeightTransition,
+ * OnEnterObserver with whenIdle(), chained-operation errors and back-pressure,
+ * lock release failures, and Factory options with persisted state, run
+ * `npm run features`.
  */
 import type { ProcessInterface } from '@camcima/finita';
 import { Order } from './order/Order.js';
